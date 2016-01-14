@@ -5,7 +5,7 @@ var app = express();
 app.use(emt.init(report));
 
 function report(req, res) {
-  console.log(res._timer);
+  console.log('TIMER', res._timer);
 }
 
 function fastMiddleware(req, res, next) {

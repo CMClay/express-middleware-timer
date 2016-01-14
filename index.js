@@ -16,13 +16,12 @@ function instrument(middleware, name) {
             function newNext() {
                 var now = Date.now();
                 timer.end = now;
-                timer.took = now - timer.start;
                 next.apply(this, arguments);
             }
 
             cb = typeof next === 'function' ? newNext : next;
 
-            res._timer.times.push(timer);
+            res._timer.wares.push(timer);
             m(req, res, cb);
         };
     }
@@ -52,20 +51,18 @@ function calculate(req, res) {
         timers: { startup: { from_start: 0 } }
     };
 
-    var reportedTimers = res._timer.times;
+    var reportedTimers = res._timer.wares;
 
     function updateReport(timer) {
         var reportNames = Object.keys(report.timers);
         var lastReport  = reportNames[reportNames.length-1];
 
         if (typeof timer === 'string') {
-            report.timers[lastReport].took = reportedTimers[timer].last;
             report.timers[lastReport].from_start = reportedTimers[timer].from_start;
             report.timers[timer] = {};
         } else {
             var now = Date.now();
-            report.timers[lastReport].took = now-timer.last;
-            report.timers[lastReport].from_start = now-timer.start;
+            report.timers[lastReport].from_start = now - timer.start;
         }
     }
 
@@ -78,7 +75,7 @@ function calculate(req, res) {
 }
 
 function report(req, res) {
-    if (OFF || !res._timer || !res._timer.times) return;
+    if (OFF || !res._timer || !res._timer.wares) return;
 
     // report
     console.log('------------------------------');
@@ -94,8 +91,7 @@ function init(reporter) {
         res._timer = {
             start: now,
             end: undefined,
-            took: undefined,
-            times: []
+            wares: []
         };
 
         reporter = (typeof reporter === 'function') ? reporter : report;
@@ -103,12 +99,11 @@ function init(reporter) {
         res.on('finish', function onResponseFinish() {
             var now = Date.now()
             var timer = res._timer;
-            var last = timer.times[timer.times.length - 1];
+            var last = timer.wares[timer.wares.length - 1];
 
             timer.end = now;
-            timer.took = timer.end - timer.start;
 
-            if (last && !last.took) last.took = now - last.start;
+            if (last && !last.end) last.end;
 
             reporter(req, res);
         });
