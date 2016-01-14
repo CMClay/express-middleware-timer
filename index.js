@@ -6,15 +6,24 @@ function instrument(middleware, name) {
 
     function bindWrapper(m, name) {
         return function wrapper(req, res, next) {
-            var now = Date.now();
-            if (res._timer && res._timer.times) {
-                res._timer.times[name] = {
-                    from_start: now-res._timer.start,
-                    last: now-res._timer.last
-                };
-                res._timer.last = now;
+            var cb;
+            var start = Date.now();
+            var timer = {
+                name: name,
+                start: start
+            };
+
+            function newNext() {
+                var now = Date.now();
+                timer.end = now;
+                timer.took = now - timer.start;
+                next.apply(this, arguments);
             }
-            m(req,res,next);
+
+            cb = typeof next === 'function' ? newNext : next;
+
+            res._timer.times.push(timer);
+            m(req, res, cb);
         };
     }
 
@@ -84,13 +93,23 @@ function init(reporter) {
         var now = Date.now();
         res._timer = {
             start: now,
-            last:  now,
-            times: {}
+            end: undefined,
+            took: undefined,
+            times: []
         };
 
         reporter = (typeof reporter === 'function') ? reporter : report;
 
         res.on('finish', function onResponseFinish() {
+            var now = Date.now()
+            var timer = res._timer;
+            var last = timer.times[timer.times.length - 1];
+
+            timer.end = now;
+            timer.took = timer.end - timer.start;
+
+            if (last && !last.took) last.took = now - last.start;
+
             reporter(req, res);
         });
 
