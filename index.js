@@ -103,7 +103,7 @@ function init(reporter) {
 
             timer.end = now;
 
-            if (last && !last.end) last.end = now - last.start;
+            if (last && !last.end) last.end = now;
 
             reporter(req, res);
         });
